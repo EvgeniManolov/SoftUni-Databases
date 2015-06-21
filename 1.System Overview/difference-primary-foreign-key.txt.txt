@@ -1,0 +1,5 @@
+Primary key is the unique key of a table, for example ID. It will not allow "Null values" and "Duplicate values".
+Foreign Key will allow "Null values" and "Duplicte values" and it refers to a primary key in anoter table.
+Each row in a table has its own unique key, rows in a table can be linked to rows in other tables by storing the unique key of the row to which it should be linked (where such unique key is known as a "foreign key").
+
+http://en.wikipedia.org/wiki/Relational_database
