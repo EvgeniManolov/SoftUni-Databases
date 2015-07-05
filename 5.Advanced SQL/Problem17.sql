@@ -1,0 +1,1 @@
+CREATE TABLE Groups (  GroupID int IDENTITY,  Name nvarchar(100) NOT NULL,  CONSTRAINT AK_Name UNIQUE(Name),  CONSTRAINT PK_Groups PRIMARY KEY(GroupID))

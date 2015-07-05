@@ -1,0 +1,1 @@
+CREATE TABLE Users (  UserID int IDENTITY,  Username nvarchar(100) NOT NULL,  CONSTRAINT AK_Username UNIQUE(Username),  Pass nvarchar(100),   CHECK (LEN([Pass])>5),  FullName nvarchar(100) NOT NULL,  LastLoginTime date,  CONSTRAINT PK_Users PRIMARY KEY(UserID))
