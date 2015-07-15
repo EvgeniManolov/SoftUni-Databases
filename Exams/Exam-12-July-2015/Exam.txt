@@ -1,0 +1,385 @@
+-- b3z-js0n
+
+--1 Problem 1.All Diablo Characters
+  
+SELECT Name FROM Characters ORDER BY Name
+  
+--2 Problem 2.Games from 2011 and 2012 year
+
+SELECT TOP 50 Name AS Game, CONVERT(char(10), Start,126) AS Start
+FROM Games 
+WHERE Start BETWEEN '2011-01-01' AND '2012-12-31' 
+ORDER BY Start, Name 
+
+--2 Problem 3.User Email Providers
+  
+SELECT Username , SUBSTRING(Email,(CHARINDEX('@',Email)+1),LEN(Email) - (CHARINDEX('@',Email))) AS [Email Provider] 
+FROM Users
+ORDER BY [Email Provider], Username
+  
+--2 Problem 4.Get users with IPAddress like pattern
+  
+SELECT Username AS [Username], IpAddress AS [IP Address]
+FROM Users 
+WHERE IpAddress like '[0-9][0-9][0-9].1%.%.[0-9][0-9][0-9]'
+ORDER BY [Username]
+  
+--3 Problem 5.Show All Games with Duration and Part of the Day
+  
+SELECT 
+	Name AS Game, 
+	CASE 
+		WHEN DATEPART(HOUR, Start) >= 0 AND DATEPART(HOUR, Start) < 12 THEN 'Morning' 
+		WHEN DATEPART(HOUR, Start) >= 12 AND DATEPART(HOUR, Start) < 18 THEN 'Afternoon' 
+		ELSE 'Evening' END AS [Part of the Day],
+	CASE 
+		WHEN Duration <= 3 THEN 'Extra Short' 
+		WHEN Duration >= 4 AND Duration <= 6 THEN 'Short' 
+		WHEN Duration > 6 THEN 'Long' 
+		ELSE 'Extra Long' END AS Duration
+FROM Games
+ORDER BY Name, Duration, Start  
+  
+--3 Problem 6.Number of Users for Email Provider
+  
+SELECT 
+	SUBSTRING(Email,(CHARINDEX('@',Email)+1),LEN(Email) - (CHARINDEX('@',Email))) AS [Email Provider],
+	COUNT(Id) AS [Number Of Users]
+FROM Users
+GROUP BY SUBSTRING(Email,(CHARINDEX('@',Email)+1),LEN(Email) - (CHARINDEX('@',Email)))
+ORDER BY [Number Of Users]DESC  , [Email Provider]
+  
+--2 Problem 7.All User in Games
+  
+SELECT 
+	g.Name AS Game, 
+	gt.Name AS [Game Type], 
+	u.Username AS Username, 
+	ug.Level AS [Level], 
+	ug.Cash AS [Cash], 
+	c.Name AS [Character]
+FROM UsersGames AS ug
+	JOIN Users AS u ON ug.UserId = u.Id
+	JOIN Games AS g ON ug.GameId = g.Id
+	JOIN GameTypes AS gt ON g.GameTypeId = gt.Id
+	JOIN Characters AS c ON ug.CharacterId = c.Id
+ORDER BY ug.Level DESC, u.Username, g.Name
+  
+--3 Problem 8.Users in Games with Their Items
+  
+SELECT 
+	u.Username AS [Username],
+	g.Name AS [Game],
+	COUNT(ugi.UserGameId) AS [Items Count],
+	SUM(i.Price) AS [Items Price]
+FROM Users AS u
+	JOIN UsersGames AS ug ON u.Id = ug.UserId
+	JOIN Games AS g ON ug.GameId = g.Id
+	JOIN UserGameItems AS ugi ON ug.Id = ugi.UserGameId
+	JOIN Items AS i ON ugi.ItemId = i.Id
+GROUP BY u.Username, g.Name
+HAVING COUNT(ugi.UserGameId) >= 10
+ORDER BY [Items Count] DESC, [Items Price] DESC, [Username]
+  
+--5 Problem 9.* User in Games with Their Statistics
+  
+SELECT 
+	u.Username AS [Username],
+	g.Name AS [Game],
+	c.Name AS [Character],
+	SUM(s.Strength) + SUM(gts.Strength) + SUM(itemS.Strength) AS [Strength] 
+	--s.Defence AS [Defence],
+	--s.Speed AS [Speed],
+	--s.Mind AS [Mind], 
+	--s.Luck AS [Luck]
+FROM Users AS u
+	LEFT OUTER JOIN UsersGames AS ug ON u.Id = ug.UserId
+	LEFT OUTER JOIN Games AS g ON ug.GameId = g.Id
+	JOIN GameTypes AS gt ON g.GameTypeId = gt.Id
+	JOIN [Statistics] AS gts ON gt.BonusStatsId = gts.Id
+	LEFT OUTER JOIN Characters AS c ON ug.CharacterId = c.Id
+	LEFT OUTER JOIN [Statistics] AS s ON c.StatisticId = s.Id
+	JOIN UserGameItems AS ugi ON ug.Id = ugi.UserGameId
+	JOIN Items AS i ON ugi.ItemId = i.Id
+	JOIN [Statistics] AS itemS ON i.StatisticId = itemS.Id
+GROUP BY u.Username, g.Name, c.Name
+ORDER BY [Strength] DESC
+
+  
+--4 Problem 10.All Items with Greater than Average Statistics
+  
+SELECT 
+	i.Name AS [Name], 
+	i.Price AS [Price], 
+	i.MinLevel AS [MinLevel],
+	s.Strength AS [Strength],
+	s.Defence AS [Defence],
+	s.Speed AS [Speed],
+	s.Luck AS [Luck],
+	s.Mind AS [Mind]
+FROM Items AS i
+	LEFT JOIN [Statistics] AS s ON i.StatisticId = s.Id
+
+WHERE s.Mind > (
+	SELECT AVG(s.Mind)FROM [Statistics] AS s
+) AND
+	s.Luck > (
+	SELECT AVG(s.Luck)FROM [Statistics] AS s
+) AND
+	s.Speed > (
+	SELECT AVG(s.Speed)FROM [Statistics] AS s
+)
+ORDER BY [Name]
+  
+--3 Problem 11.Display All Items with Information about Forbidden Game Type
+  
+SELECT 
+	i.Name AS [Item], 
+	i.Price AS [Price],
+	i.MinLevel AS [MinLevel],
+	gt.Name AS [Forbidden Game Type]
+FROM GameTypeForbiddenItems AS gtfi
+	FULL JOIN GameTypes AS gt ON gtfi.GameTypeId = gt.Id
+	FULL JOIN Items AS i ON gtfi.ItemId = i.Id
+ORDER BY [Forbidden Game Type] DESC, [Item]
+  
+--10 Problem 12.Buy items for user in game
+  
+--1
+
+SELECT 
+	u.Username AS [Username],
+	g.Name AS [Name],
+	ug.Cash AS [Cash], 
+	i.Name AS [Item Name]
+FROM Users AS u
+	JOIN UsersGames AS ug ON u.Id = ug.UserId
+	JOIN Games AS g ON ug.GameId = g.Id
+	JOIN UserGameItems AS ugi ON ug.Id = ugi.UserGameId
+	JOIN Items AS i ON ugi.ItemId = i.Id
+WHERE g.Name = 'Edinburgh'
+ORDER BY [Item Name]
+
+--2
+
+INSERT INTO UserGameItems (ItemId,UserGameId)
+VALUES (
+	(
+	SELECT Id
+	FROM Items
+	WHERE Name = 'Hellfire Amulet'
+	),
+	(
+	SELECT ug.Id
+	FROM UsersGames AS ug
+		JOIN Users AS u ON ug.UserId = u.Id
+		JOIN Games AS g ON ug.GameId = g.Id
+	WHERE u.Username = 'Alex' AND g.Name = 'Edinburgh'
+	)
+)
+
+UPDATE UsersGames
+SET Cash = (
+	SELECT ug.Cash - i.Price
+	FROM UsersGames AS ug 
+		JOIN UserGameItems AS ugi ON ug.Id = ugi.UserGameId
+		JOIN Items AS i ON ugi.ItemId = i.Id
+		JOIN Users AS u ON ug.UserId = u.Id
+		JOIN Games AS g ON ug.GameId = g.Id
+	WHERE u.Username = 'Alex' AND g.Name = 'Edinburgh' AND i.Name = 'Hellfire Amulet'
+)
+WHERE Id = 235
+  
+-- Problem 13.Massive shopping
+  
+  DECLARE @PractitionerId int
+
+DECLARE MY_CURSOR CURSOR 
+  LOCAL STATIC READ_ONLY FORWARD_ONLY
+FOR 
+SELECT DISTINCT Id 
+FROM Items
+WHERE MinLevel = 11 OR MinLevel = 12 OR MinLevel = 19 OR MinLevel = 20 OR MinLevel = 21
+
+OPEN MY_CURSOR
+FETCH NEXT FROM MY_CURSOR INTO @PractitionerId
+WHILE @@FETCH_STATUS = 0
+BEGIN 
+
+    BEGIN TRANSACTION
+		BEGIN TRY
+
+			UPDATE UsersGames
+			SET Cash = (
+				SELECT ug.Cash - i.Price
+				FROM UsersGames AS ug, Items AS i
+				WHERE ug.Id = 110 AND i.Id = @PractitionerId
+			)
+			WHERE Id = 110
+
+			INSERT INTO UserGameItems (UserGameId, ItemId)
+			VALUES (110, @PractitionerId)
+
+			COMMIT TRANSACTION
+		END TRY
+BEGIN CATCH
+    SELECT 
+        ERROR_NUMBER() AS ErrorNumber,
+        ERROR_STATE() AS ErrorState,
+        ERROR_MESSAGE() AS ErrorMessage
+    ROLLBACK TRANSACTION
+END CATCH
+
+    FETCH NEXT FROM MY_CURSOR INTO @PractitionerId
+END
+CLOSE MY_CURSOR
+DEALLOCATE MY_CURSOR
+  
+  
+  SELECT i.Name AS [Item Name]
+FROM Items AS i
+	JOIN UserGameItems AS ugi ON i.Id = ugi.ItemId
+	JOIN UsersGames AS ug ON ugi.UserGameId = ug.Id
+	JOIN Games AS g ON ug.GameId = g.Id
+WHERE g.Name = 'Safflower'
+ORDER BY [Item Name]
+
+-- Problem 14.Scalar Function: Cash in User Games Odd Rows
+  
+6766.00
+5571.00
+  
+SumCash
+5515.00
+7266.00
+8585.00
+12337.00
+21520.00
+
+(5 row(s) affected)
+  
+SELECT ug.Cash AS SumCash
+FROM UsersGames AS ug
+	JOIN Games AS g ON ug.GameId = g.Id
+WHERE g.Name = 'Ming fern'
+ORDER BY ug.Cash DESC
+  
+SELECT SUM(ug.Cash) AS SumCash
+FROM UsersGames AS ug
+	JOIN Games AS g ON ug.GameId = g.Id
+WHERE g.Name = 'Ming fern' AND ug.Id <> 0 
+-- 
+  
+  username, fullname, Job, From Value, To Value
+  
+-- 
+  
+  SELECT 
+	u.username AS `username`,
+    u.fullname AS `fullname`,
+    ja.title AS `Job`,
+    s.from_value AS `From Value`,
+    s.to_value AS `To Value`
+    
+    
+	FROM `job_ad_applications` jaa
+	JOIN `users` u ON jaa.user_id = u.id 
+    JOIN `job_ads` ja ON jaa.job_ad_id = ja.id
+    JOIN `salaries` s ON ja.salary_id = s.id
+  
+-- 
+  
+Item Name
+Akarats Awakening
+Amulets
+Angelic Shard
+Aquila Cuirass
+Axes
+Band of Hollow Whispers
+Belt of Transcendence
+Blessed of Haull
+Cluckeye
+Crashing Rain
+Crusader Shields
+Deadly Rebirth
+Devil Tongue
+Earthshatter
+Eye of Etlich (Diablo III)
+Fire Walkers
+Frozen Blood
+Glowing Ore
+Gogok of Swiftness
+Halcyons Ascent
+Illusory Boots
+Morticks Brace
+Overwhelming Desire
+Pants
+Rimeheart
+Swamp Land Waders
+Talisman of Aranoch
+Two-Handed Mighty Weapons
+
+(29 row(s) affected)
+
+  
+  
+-- 
+  
+  
+  
+-- 
+  
+  
+  
+-- 
+  
+  
+  
+-- 
+SELECT 
+	u.username AS `username`,
+    u.fullname AS `fullname`,
+    ja.title AS `Job`,
+    s.from_value AS `From Value`,
+    s.to_value AS `To Value`
+    
+    
+	FROM `job_ad_applications` jaa
+	JOIN `users` u ON jaa.user_id = u.id 
+    JOIN `job_ads` ja ON jaa.job_ad_id = ja.id
+    JOIN `salaries` s ON ja.salary_id = s.id  
+  
+username, fullname, Job, From Value, To Value 	
+gosho, Georgi Manchev, C++ Developer, 2000.00, 3000.00
+gosho, Georgi Manchev, Game Developer, 600.00, 800.00
+gosho, Georgi Manchev, Java Developer, 1000.00, 1200.00
+jivka, Jivka Goranova, .NET Developer, 1300.00, 1500.00
+jivka, Jivka Goranova, Java Developer, 1000.00, 1200.00
+minka, Minka Dryzdeva, .NET Developer, 1300.00, 1500.00
+minka, Minka Dryzdeva, JavaScript Developer, 1500.00, 2000.00
+petrohana, Peter Petromanov, Unity Developer, 550.00, 700.00
+
+--
+
+
+SELECT 
+	u.Username AS [Username],
+	g.Name AS [Game],
+	c.Name AS [Character],
+	SUM(itemS.Strength) AS [Strength],
+	SUM(itemS.Defence) AS [Defence],
+	SUM(itemS.Speed) AS [Speed],
+	SUM(itemS.Mind) AS [Mind],
+	SUM(itemS.Luck) AS [Luck]
+FROM Users AS u
+	LEFT OUTER JOIN UsersGames AS ug ON u.Id = ug.UserId
+	LEFT OUTER JOIN Games AS g ON ug.GameId = g.Id
+	JOIN GameTypes AS gt ON g.GameTypeId = gt.Id
+	JOIN [Statistics] AS gts ON gt.BonusStatsId = gts.Id
+	LEFT OUTER JOIN Characters AS c ON ug.CharacterId = c.Id
+	LEFT OUTER JOIN [Statistics] AS s ON c.StatisticId = s.Id
+	JOIN UserGameItems AS ugi ON ug.Id = ugi.UserGameId
+	JOIN Items AS i ON ugi.ItemId = i.Id
+	JOIN [Statistics] AS itemS ON i.StatisticId = itemS.Id
+GROUP BY u.Username, g.Name, c.Name
+ORDER BY [Strength] DESC
